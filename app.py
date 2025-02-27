@@ -86,7 +86,7 @@ def ask_question():
     -Contexto: Se necesita extraer información de los miembros del comité técnico del proceso para alimentar las bases de datos.
     -Instrucción: Extrae la información de todos los miembros del comité técnico y sus cargos tanto para con el comité como para con la empresa
     -Formato: Muestra la información solicitada en formato JSON, siguiendo el orden de Miembro del comité, Cargo en la empresa, Cargo en la comisión
-    -Restricciones: Si no encuentras la información en el texto no la pongas o no te inventes nombres, y no pongas el nombre de la persona que firmó el documento"""
+    -Restricciones: Si no encuentras la información en el texto no la pongas o no te inventes nombres, y no pongas el nombre de la persona que firmó el documento, además si no encuentras el cargo dentro de la comisión, repite en ese campo el cargo en la empresa pero no puede decir simplemente miembro, y si no encuentras el cargo en la empresa repite el cargo en el comité"""
 
     prompt = f"Context:\n{context}\n\n{prompt_template}"
     response_text = generate_ai_response(prompt)
@@ -161,7 +161,7 @@ def export_csv():
         writer = csv.writer(output, delimiter='\t')
 
         # Write headers
-        writer.writerow(["Nombre del documento", "Nombre del miembro", "Cargo en la empresa", "Cargo en la comisión"])
+        writer.writerow(["Código del proceso", "Nombre del miembro", "Cargo en la empresa", "Cargo en la comisión"])
         for row in csv_output:
             writer.writerow(row)
 

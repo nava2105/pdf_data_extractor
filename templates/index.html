@@ -26,6 +26,15 @@
                 </li>
             {% endfor %}
         </ul>
+        <div class="mt-4">
+            <button class="btn btn-secondary" id="export-csv">Export all to CSV</button>
+        </div>
+
+        <script>
+            document.getElementById("export-csv").addEventListener("click", function () {
+                window.location.href = "/export_csv";
+            });
+        </script>
     </div>
 </div>
 <h3 class="mt-4">Answer:</h3>
@@ -51,15 +60,6 @@
             let data = await response.json();
             document.getElementById("answer").innerText = data.answer || "No saved response found.";
         });
-    });
-</script>
-<div class="mt-4">
-    <button class="btn btn-secondary" id="export-csv">Export all to CSV</button>
-</div>
-
-<script>
-    document.getElementById("export-csv").addEventListener("click", function () {
-        window.location.href = "/export_csv";
     });
 </script>
 {% endblock %}
