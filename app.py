@@ -107,56 +107,60 @@ def get_saved_response():
 
 @app.route('/export_csv', methods=['GET'])
 def export_csv():
-    """Exports all stored responses in JSON format to a CSV file with proper UTF-8 encoding."""
+    """Exports all stored responses in JSON format to a properly encoded CSV file."""
     csv_output = []
 
-    # Cargar los datos desde responses_store.json
+    # Load stored responses from JSON file
     responses_data = load_json_store(RESPONSES_STORE)
 
     if not responses_data:
         print("No hay datos en responses_store.json")
         return Response("No hay datos para exportar", mimetype="text/plain")
 
-    # Recorrer cada documento y extraer información
+    # Process each document and extract relevant data
     for filename, response_text in responses_data.items():
-        doc_name = filename.replace('.pdf', '').replace('.PDF', '')  # Remover extensión
+        doc_name = filename.replace('.pdf', '').replace('.PDF', '')  # Remove PDF extension
 
-        # Intentar limpiar el JSON del texto
+        # Remove markdown ```json ``` blocks
         cleaned_text = re.sub(r'```json|```', '', response_text).strip()
 
         try:
-            # Intentar cargar como JSON
+            # Parse JSON
             members_data = json.loads(cleaned_text)
 
             if not isinstance(members_data, list):
                 print(f"Formato incorrecto en {filename}, se esperaba una lista.")
                 continue
 
-            # Extraer cada miembro y agregarlo al CSV
+            # Extract data and ensure it's clean
             for member in members_data:
                 row = [
                     doc_name,
-                    member.get("Miembro del comité", "N/A"),
-                    member.get("Cargo en la empresa", "N/A"),
-                    member.get("Cargo en la comisión", "N/A")
+                    member.get("Miembro del comité", "N/A").strip(),
+                    member.get("Cargo en la empresa", "N/A").strip(),
+                    member.get("Cargo en la comisión", "N/A").strip()
                 ]
                 csv_output.append(row)
         except json.JSONDecodeError as e:
             print(f"Error al decodificar JSON en {filename}: {e}")
 
-    # Si no hay datos extraídos, informar
+    # Ensure there is data to write
     if not csv_output:
         print("No se extrajeron datos válidos del JSON.")
         return Response("No hay datos válidos para exportar", mimetype="text/plain")
 
-    # Crear CSV en memoria con UTF-8-SIG
+    # Create CSV with UTF-8 BOM (Byte Order Mark) for proper encoding
     def generate():
         output = io.StringIO()
+        output.write('\ufeff')  # Add UTF-8 BOM to ensure correct encoding in Excel
         writer = csv.writer(output, delimiter='\t')
-        writer.writerow(["Nombre del documento", "Nombre del miembro", "Cargo en la empresa", "Cargo en la comisión"])  # Cabecera
+
+        # Write headers
+        writer.writerow(["Nombre del documento", "Nombre del miembro", "Cargo en la empresa", "Cargo en la comisión"])
         for row in csv_output:
             writer.writerow(row)
-        output.seek(0)  # Reiniciar puntero de lectura
+
+        output.seek(0)  # Reset pointer to the beginning
         yield output.read()
         output.close()
 
