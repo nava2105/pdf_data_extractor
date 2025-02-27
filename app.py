@@ -3,6 +3,7 @@ import re
 import csv
 import io
 import json
+import datetime
 from flask import Flask, request, jsonify, render_template, redirect, url_for, Response
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
@@ -107,7 +108,7 @@ def get_saved_response():
 
 @app.route('/export_csv', methods=['GET'])
 def export_csv():
-    """Exports all stored responses in JSON format to a properly encoded CSV file."""
+    """Exports all stored responses in JSON format to a properly encoded CSV file with a timestamped filename."""
     csv_output = []
 
     # Load stored responses from JSON file
@@ -149,10 +150,14 @@ def export_csv():
         print("No se extrajeron datos válidos del JSON.")
         return Response("No hay datos válidos para exportar", mimetype="text/plain")
 
+    # Generate timestamp for filename
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    filename = f"{timestamp}-CELEC-COM.csv"
+
     # Create CSV with UTF-8 BOM (Byte Order Mark) for proper encoding
     def generate():
         output = io.StringIO()
-        output.write('\ufeff')  # Add UTF-8 BOM to ensure correct encoding in Excel
+        output.write('\ufeff')  # Add UTF-8 BOM for Excel compatibility
         writer = csv.writer(output, delimiter='\t')
 
         # Write headers
@@ -164,7 +169,7 @@ def export_csv():
         yield output.read()
         output.close()
 
-    return Response(generate(), mimetype="text/csv", headers={"Content-Disposition": "attachment; filename=export.csv"})
+    return Response(generate(), mimetype="text/csv", headers={"Content-Disposition": f"attachment; filename={filename}"})
 
 
 if __name__ == '__main__':
