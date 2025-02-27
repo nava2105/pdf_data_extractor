@@ -54,31 +54,27 @@ def index():
 def upload_file():
     if 'file' not in request.files:
         return redirect(request.url)
-    file = request.files['file']
-    if file.filename == '':
-        return redirect(request.url)
-    if file and allowed_file(file.filename, app.config['ALLOWED_EXTENSIONS']):
+    files = request.files.getlist('file')
+    for file in files:
+        if file.filename == '' or not allowed_file(file.filename, app.config['ALLOWED_EXTENSIONS']):
+            continue
         filename = secure_filename(file.filename)
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(file_path)
-
         text_chunks = extract_text_chunks(file_path)
         embeddings = generate_text_embeddings(text_chunks)
         if embeddings:
             embeddings_store[filename] = {'chunks': embeddings}
             save_json_store(JSON_STORE, embeddings_store)
-        return redirect(url_for('index'))
-    return redirect(request.url)
+    return redirect(url_for('index'))
 
 
 @app.route('/ask', methods=['POST'])
 def ask_question():
     data = request.json
     filename = data.get('filename', '')
-
     if filename not in embeddings_store:
         return jsonify({'error': 'Document not found'}), 400
-
     document_data = embeddings_store[filename]
     context = "\n".join([chunk[0] for chunk in document_data['chunks']])
 
@@ -90,12 +86,28 @@ def ask_question():
 
     prompt = f"Context:\n{context}\n\n{prompt_template}"
     response_text = generate_ai_response(prompt)
-
-    # Store the AI-generated response
     responses_store[filename] = response_text
     save_json_store(RESPONSES_STORE, responses_store)
-
     return jsonify({'answer': response_text})
+
+
+@app.route('/ask_all', methods=['POST'])
+def ask_all():
+    responses = {}
+    for filename, document_data in embeddings_store.items():
+        context = "\n".join([chunk[0] for chunk in document_data['chunks']])
+        prompt_template = """En base a las resoluciones o el apartado donde se resuelve a los miembros del comité técnico, lista a cada miembro y su función tanto en la empresa como en el comité.
+            -Contexto: Se necesita extraer información de los miembros del comité técnico del proceso para alimentar las bases de datos.
+            -Instrucción: Extrae la información de todos los miembros del comité técnico y sus cargos tanto para con el comité como para con la empresa
+            -Formato: Muestra la información solicitada en formato JSON, siguiendo el orden de Miembro del comité, Cargo en la empresa, Cargo en la comisión
+            -Restricciones: Si no encuentras la información en el texto no la pongas o no te inventes nombres, y no pongas el nombre de la persona que firmó el documento, además si no encuentras el cargo dentro de la comisión, repite en ese campo el cargo en la empresa pero no puede decir simplemente miembro, y si no encuentras el cargo en la empresa repite el cargo en el comité"""
+
+        prompt = f"Context:\n{context}\n\n{prompt_template}"
+        response_text = generate_ai_response(prompt)
+        responses_store[filename] = response_text
+        save_json_store(RESPONSES_STORE, responses_store)
+        responses[filename] = response_text
+    return jsonify(responses)
 
 
 @app.route('/responses', methods=['GET'])
@@ -137,9 +149,9 @@ def export_csv():
             for member in members_data:
                 row = [
                     doc_name,
-                    member.get("Miembro del comité", "N/A").strip(),
-                    member.get("Cargo en la empresa", "N/A").strip(),
-                    member.get("Cargo en la comisión", "N/A").strip()
+                    (member.get("Miembro del comité") or "").strip(),
+                    (member.get("Cargo en la empresa") or "").strip(),
+                    (member.get("Cargo en la comisión") or "").strip()
                 ]
                 csv_output.append(row)
         except json.JSONDecodeError as e:
