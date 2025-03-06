@@ -47,7 +47,26 @@ configure_gemini_api()
 
 @app.route('/')
 def index():
-    return render_template("index.html", files=list(embeddings_store.keys()), responses=responses_store)
+    # Get the current page from query parameters, default to 1
+    page = request.args.get('page', 1, type=int)
+    search_query = request.args.get('search', '', type=str)  # Get search query
+    per_page = 10  # Number of files to display per page
+    files = list(embeddings_store.keys())
+
+    # Filter files based on search query
+    if search_query:
+        files = [file for file in files if search_query.lower() in file.lower()]
+
+    # Calculate total pages
+    total_files = len(files)
+    total_pages = (total_files + per_page - 1) // per_page  # Ceiling division
+
+    # Get the files for the current page
+    start = (page - 1) * per_page
+    end = start + per_page
+    paginated_files = files[start:end]
+
+    return render_template("index.html", files=paginated_files, total_pages=total_pages, current_page=page, search_query=search_query)
 
 
 @app.route('/upload', methods=['POST'])
@@ -182,6 +201,27 @@ def export_csv():
         output.close()
 
     return Response(generate(), mimetype="text/csv", headers={"Content-Disposition": f"attachment; filename={filename}"})
+
+
+@app.route('/delete', methods=['POST'])
+def delete_file():
+    data = request.json
+    filename = data.get('filename', '')
+
+    if filename in embeddings_store:
+        del embeddings_store[filename]
+        save_json_store(JSON_STORE, embeddings_store)
+
+    if filename in responses_store:
+        del responses_store[filename]
+        save_json_store(RESPONSES_STORE, responses_store)
+
+    # Optionally, delete the actual file from the uploads directory
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    if os.path.exists(file_path):
+        os.remove(file_path)
+
+    return jsonify({'message': 'File and associated data deleted successfully.'}), 200
 
 
 if __name__ == '__main__':
