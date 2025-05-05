@@ -8,7 +8,6 @@ def allowed_file(filename, allowed_extensions={'pdf'}):
 
 
 def extract_text_chunks(pdf_path, chunk_size=1000):
-    """Extracts text from a PDF and splits it into chunks. Uses PyPDF2 first, then PyMuPDF as fallback."""
     text_chunks = []
     text = ""
 

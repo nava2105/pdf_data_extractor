@@ -2,13 +2,11 @@ import os
 import google.generativeai as genai
 
 def configure_gemini_api():
-    """Configures Google Gemini API."""
     google_api_key = os.getenv('GOOGLE_API_KEY')
     if google_api_key:
         genai.configure(api_key=google_api_key)
 
 def generate_text_embeddings(text_chunks):
-    """Generates embeddings for text chunks using Google Gemini API."""
     embeddings = []
     for chunk in text_chunks:
         try:
@@ -24,7 +22,6 @@ def generate_text_embeddings(text_chunks):
     return embeddings
 
 def generate_ai_response(prompt):
-    """Generates AI response using Gemini model."""
     model = genai.GenerativeModel("gemini-1.5-flash")
     response = model.generate_content(prompt)
     return response.text
